@@ -11,6 +11,7 @@ set nocompatible
 "allow backspacing over everything in insert mode
 set backspace=indent,eol,start
 
+
 "store lots of :cmdline history
 set history=1000
 
@@ -26,9 +27,13 @@ set showbreak=...
 "set wrap linebreak nolist
 set nowrap
 
+set ffs=unix
+
 set autoread
 
-let mapleader = ","
+let mapleader = " "
+nnoremap <Leader>w :w<CR>
+nnoremap <leader>( csW,
 highlight Search guifg=yellow gui=underline
 
 "mapping for command key to map navigation thru display lines instead
@@ -55,98 +60,22 @@ nmap <Down> gj
 nmap <Up> gk
 set fo=l
 
-"statusline setup
-set statusline=%f       "tail of the filename
-
-"Git
-set statusline+=[%{GitBranch()}]
-
-"RVM
-set statusline+=%{exists('g:loaded_rvm')?rvm#statusline():''}
-
-set statusline+=%=      "left/right separator
-set statusline+=%c,     "cursor column
-set statusline+=%l/%L   "cursor line/total lines
-set statusline+=\ %P    "percent through file
 set laststatus=2
 
 "turn off needless toolbar on gvim/mvim
 set guioptions-=T
 
-"recalculate the trailing whitespace warning when idle, and after saving
-autocmd cursorhold,bufwritepost * unlet! b:statusline_trailing_space_warning
+"remove trailing whitespace before save
+function! StripTrailingWhite()
+  let l = line(".")
+  let c = col(".")
+  let _s=@/
+  %s/\s\+$//e
+  call cursor(l, c)
+  let @/=_s
+endfun
 
-"return '[\s]' if trailing white space is detected
-"return '' otherwise
-function! StatuslineTrailingSpaceWarning()
-    if !exists("b:statusline_trailing_space_warning")
-        if search('\s\+$', 'nw') != 0
-            let b:statusline_trailing_space_warning = '[\s]'
-        else
-            let b:statusline_trailing_space_warning = ''
-        endif
-    endif
-    return b:statusline_trailing_space_warning
-endfunction
-
-
-"return the syntax highlight group under the cursor ''
-function! StatuslineCurrentHighlight()
-    let name = synIDattr(synID(line('.'),col('.'),1),'name')
-    if name == ''
-        return ''
-    else
-        return '[' . name . ']'
-    endif
-endfunction
-
-"recalculate the tab warning flag when idle and after writing
-autocmd cursorhold,bufwritepost * unlet! b:statusline_tab_warning
-
-"return '[&et]' if &et is set wrong
-"return '[mixed-indenting]' if spaces and tabs are used to indent
-"return an empty string if everything is fine
-function! StatuslineTabWarning()
-    if !exists("b:statusline_tab_warning")
-        let tabs = search('^\t', 'nw') != 0
-        let spaces = search('^ ', 'nw') != 0
-
-        if tabs && spaces
-            let b:statusline_tab_warning =  '[mixed-indenting]'
-        elseif (spaces && !&et) || (tabs && &et)
-            let b:statusline_tab_warning = '[&et]'
-        else
-            let b:statusline_tab_warning = ''
-        endif
-    endif
-    return b:statusline_tab_warning
-endfunction
-
-"recalculate the long line warning when idle and after saving
-autocmd cursorhold,bufwritepost * unlet! b:statusline_long_line_warning
-
-"return a warning for "long lines" where "long" is either &textwidth or 80 (if
-"no &textwidth is set)
-"
-"return '' if no long lines
-"return '[#x,my,$z] if long lines are found, were x is the number of long
-"lines, y is the median length of the long lines and z is the length of the
-"longest line
-function! StatuslineLongLineWarning()
-    if !exists("b:statusline_long_line_warning")
-        let long_line_lens = s:LongLines()
-
-        if len(long_line_lens) > 0
-            let b:statusline_long_line_warning = "[" .
-                        \ '#' . len(long_line_lens) . "," .
-                        \ 'm' . s:Median(long_line_lens) . "," .
-                        \ '$' . max(long_line_lens) . "]"
-        else
-            let b:statusline_long_line_warning = ""
-        endif
-    endif
-    return b:statusline_long_line_warning
-endfunction
+autocmd BufWritePre *.{rb,coffee,js,haml,erb,python} call StripTrailingWhite()
 
 "return a list containing the lengths of the long lines in this buffer
 function! s:LongLines()
@@ -213,6 +142,9 @@ filetype indent on
 
 "turn on syntax highlighting
 syntax on
+au BufRead,BufNewFile *.hamlc set filetype=haml
+au BufRead,BufNewFile *.eco set filetype=html
+au BufRead,BufNewFile *.cljs set filetype=clojure
 
 "some stuff to get the mouse going in term
 set mouse=a
@@ -225,21 +157,14 @@ set nobackup
 set nowritebackup
 set noswapfile
 
-"Command-T configuration
-let g:CommandTMaxHeight=15
-let g:CommandTMatchWindowAtTop=0
-
 set t_Co=256
-"set background=dark
-"colorscheme solarized
+set background=dark
+colorscheme grb
 set guitablabel=%M%t
 
-if has("gui_mac") || has("gui_macvim")
-    let g:Powerline_symbols = 'fancy'
-    set guifont=Mensch\ for\ Powerline:h14
-    map <D-t> :CommandT<CR>
-    set invmmta
-endif
+" vim-airline settings
+let g:airline_powerline_fonts=1
+set ttimeoutlen=50
 
 nnoremap - :Switch<cr>
 
@@ -249,12 +174,6 @@ inoremap <C-L> <C-O>:nohls<CR>
 
 "map to bufexplorer
 nnoremap <leader>b :BufExplorer<cr>
-
-"map to CommandT TextMate style finder
-nnoremap <leader>t :CommandT<CR>
-
-"map to fire specs
-nnoremap <leader>f :!bundle exec spec %
 
 "map Q to something useful
 noremap Q gq
@@ -306,12 +225,6 @@ function! s:HighlightLongLines(width)
     endif
 endfunction
 
-"key mapping for window navigation
-map <C-h> <C-w>h
-map <C-j> <C-w>j
-map <C-k> <C-w>k
-map <C-l> <C-w>l
-
 "key mapping for saving file
 nmap <C-s> :w<CR>
 
@@ -327,6 +240,10 @@ vmap <D-]> >gv
 
 let ScreenShot = {'Icon':0, 'Credits':0, 'force_background':'#FFFFFF'}
 let g:ctrlp_match_window_reversed = 1
+let g:ctrlp_max_files = 0
+let g:ctrlp_max_depth = 40
+let g:ctrlp_user_command = 'find %s -type f | grep -v "\.git"'
+let g:ctrlp_show_hidden = 0
 
 
 augroup vimrcEx
@@ -348,7 +265,6 @@ augroup END
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 cnoremap %% <C-R>=expand('%:h').'/'<cr>
 map <leader>e :edit %%
-map <leader>v :view %%
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " RENAME CURRENT FILE
@@ -396,18 +312,6 @@ function! ShowRoutes()
   :normal dd
 endfunction
 map <leader>gR :call ShowRoutes()<cr>
-map <leader>gv :CommandTFlush<cr>\|:CommandT app/views<cr>
-map <leader>gc :CommandTFlush<cr>\|:CommandT app/controllers<cr>
-map <leader>gm :CommandTFlush<cr>\|:CommandT app/models<cr>
-map <leader>gh :CommandTFlush<cr>\|:CommandT app/helpers<cr>
-map <leader>gl :CommandTFlush<cr>\|:CommandT lib<cr>
-map <leader>gp :CommandTFlush<cr>\|:CommandT public<cr>
-map <leader>gs :CommandTFlush<cr>\|:CommandT public/stylesheets/sass<cr>
-map <leader>gf :CommandTFlush<cr>\|:CommandT features<cr>
-map <leader>gg :topleft 100 :split Gemfile<cr>
-map <leader>gt :CommandTFlush<cr>\|:CommandTTag<cr>
-map <leader>f :CommandTFlush<cr>\|:CommandT<cr>
-map <leader>F :CommandTFlush<cr>\|:CommandT %%<cr>
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " SWITCH BETWEEN TEST AND PRODUCTION CODE
@@ -421,7 +325,7 @@ function! AlternateForCurrentFile()
   let new_file = current_file
   let in_spec = match(current_file, '^spec/') != -1
   let going_to_spec = !in_spec
-  let in_app = match(current_file, '\<controllers\>') != -1 || match(current_file, '\<models\>') != -1 || match(current_file, '\<views\>') != -1
+  let in_app = match(current_file, '\<controllers\>') != -1 || match(current_file, '\<models\>') != -1 || match(current_file, '\<views\>') != -1 || match(current_file, '\<policies\>') != -1 || match(current_file, '\<services\>') != -1
   if going_to_spec
     if in_app
       let new_file = substitute(new_file, '^app/', '', '')
@@ -489,12 +393,11 @@ function! RunNearestTest()
     call RunTestFile(":" . spec_line_number . " -b")
 endfunction
 
-map <leader>s :call RunNearestTest()<cr>
+map <leader>z :call RunNearestTest()<cr>
 map <leader>G :call RunTests('')<cr>
-map <leader>c :w\|:!script/features<cr>
-map <leader>w :w\|:!script/features --profile wip<cr>
 
-map <leader>z :w\|:!ruby %<cr>
+map <leader>Z :w\|:!ruby %<cr>
+map <leader>i :w\|:!mix test %<cr>
 
 let $XIKI_DIR = "/Users/pro/.rvm/gems/ruby-1.9.3-p194/gems/xiki-0.6.3/"
 
@@ -508,3 +411,86 @@ nmap <Leader>s :SplitjoinSplit<cr>
 " Tabularize
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 map <Leader>q :Tabularize /
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" Custom
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+nmap j gj
+nmap k gk
+nmap <C-e> :e#<CR>
+nmap <C-n> :bnext<CR>
+nmap <C-p> :bprev<CR>
+
+nmap ; :CtrlPBuffer<CR>
+nmap <leader>k :CtrlPClearCache<CR>
+nmap <leader>f :Ag <C-R><C-W><CR>
+
+let g:gitgutter_enabled = 1
+
+nnoremap <C-i> :call NumberToggle()<cr>
+
+let g:tmux_navigator_no_mappings = 1
+nmap <silent> <c-h> :TmuxNavigateLeft<cr>
+nmap <silent> <c-j> :TmuxNavigateDown<cr>
+nmap <silent> <c-k> :TmuxNavigateUp<cr>
+nmap <silent> <c-l> :TmuxNavigateRight<cr>
+nmap <silent> <c-\> :TmuxNavigatePrevious<cr>
+
+map <leader>c :PBCopy<cr>
+map <leader>v :PBPaste<cr>
+
+map <leader>t :NERDTreeToggle<CR>
+
+set clipboard=unnamed
+
+
+" Dash binding
+nmap <silent> <leader>d <Plug>DashSearch
+let g:dash_map = {
+        \ 'ruby'       : 'rails ruby',
+        \ 'javascript' : 'jquery backbone javascript ',
+        \ 'coffee' : 'jquery backbone coffee javascript',
+        \ 'css' : 'bootstrap sass css',
+        \ 'scss' : 'bootstrap sass css'
+        \ }
+
+
+" Easymotion
+map  / <Plug>(easymotion-sn)
+omap / <Plug>(easymotion-tn)
+nmap t <Plug>(easymotion-t2)
+
+let g:jsx_ext_required = 0
+let g:syntastic_javascript_checkers = ['eslint']
+let g:syntastic_check_on_open = 0
+let g:syntastic_check_on_wq = 0
+set statusline+=%#warningmsg#
+set statusline+=%{SyntasticStatuslineFlag()}
+set statusline+=%*
+let g:syntastic_mode_map = {
+    \ "mode": "active",
+    \ "passive_filetypes": ["haml", "scss", "sass"] }
+
+let g:flow#autoclose = 1
+
+function! RestoreRegister()
+  let @" = s:restore_reg
+  return ''
+endfunction
+function! s:Repl()
+  let s:restore_reg = @"
+  return "p@=RestoreRegister()\<cr>"
+endfunction
+vmap <silent> <expr> p <sid>Repl()
+
+let g:ctrlp_use_caching = 0
+if executable('ag')
+  set grepprg=ag\ --nogroup\ --nocolor
+
+  let g:ctrlp_user_command = 'ag %s -l --nocolor -g ""'
+else
+  let g:ctrlp_user_command = ['.git', 'cd %s && git ls-files . -co --exclude-standard', 'find %s -type f']
+  let g:ctrlp_prompt_mappings = {
+        \ 'AcceptSelection("e")': ['<space>', '<cr>', '<2-LeftMouse>'],
+        \ }
+endif
